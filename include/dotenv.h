@@ -1,4 +1,3 @@
-
 /*
  * dotenv - A simple header-only environment variable loader for C++ projects
  * Author: Sermet Pekin
@@ -26,7 +25,6 @@
  * SOFTWARE.
  */
 
-
 #ifndef dotenv_H
 #define dotenv_H
 
@@ -48,8 +46,23 @@ public:
         if (it != envVariables.end()) {
             return it->second;  // Found in .env file
         }
-        const char* envValue = std::getenv(key.c_str());
-        return envValue ? envValue : defaultValue;  // Fallback to system environment or default
+
+        #ifdef _WIN32
+            char* envValue = nullptr;
+            size_t len = 0;
+            if (_dupenv_s(&envValue, &len, key.c_str()) == 0 && envValue != nullptr) {
+                std::string result(envValue);
+                free(envValue);
+                return result;
+            }
+        #else
+            const char* envValue = std::getenv(key.c_str());
+            if (envValue) {
+                return envValue;
+            }
+        #endif
+
+        return defaultValue;  // Fallback to default if not found
     }
 
     void set(const std::string& key, const std::string& value) {
@@ -75,7 +88,7 @@ private:
     void load(const std::string& filepath) {
         std::ifstream file(filepath);
         if (!file) {
-            std::cerr << "Could not open "<< filepath << " file" <<  std::endl;
+            std::cerr << "Could not open " << filepath << " file" << std::endl;
             return;
         }
 
